@@ -22,8 +22,6 @@ module NotificationPipeline
   # Each message represents an event subscribers want to know about, like "Garrett liked photo XyZ!".
   class Channel < Array
     def <<(hash)
-      hash = hash.merge(created_at: timestamp)
-
       persist!(hash)
     end
 
@@ -34,6 +32,9 @@ module NotificationPipeline
   private
     def persist!(hash)
       # persist Notification, e.g. into Redis or AR. Or array.
+
+      # this must be implemented by bg engine.
+      hash = hash.merge(created_at: timestamp, id: hash.object_id)
       push(hash)
     end
 
@@ -50,7 +51,17 @@ module NotificationPipeline
   end
 
   class Notification < OpenStruct
+  end
 
+
+  # Stream is a list of notifications for a subscriber, ready for presentation.
+  class Stream < Array
+    def initialize(channels)
+      # this can be optimized!
+      channels.each do |name, messages|
+        messages.each { |msg| self << Notification.new(msg) }
+      end
+    end
   end
 end
 
@@ -74,20 +85,33 @@ class PipelineTest < MiniTest::Spec
   it do
     subject["new-songs"].extend(Now)
 
-    subject["new-songs"] << {message: "Drones"}
-    subject["new-songs"] << {message: "Them And Us"}
+    subject["new-songs"] << hsh1 = {message: "Drones"}
+    subject["new-songs"] << hsh2 = {message: "Them And Us"}
 
-    subject["new-songs", 0].must_equal [{message: "Drones", created_at: Now::NOW}, {message: "Them And Us", created_at: Now::NOW}] # next_i => 1
-    subject["new-songs", 1].must_equal [{message: "Them And Us", created_at: Now::NOW}] # next_i => 1
+    # i = 0
+    subject["new-songs", 0].must_equal [
+      {message: "Drones",      created_at: Now::NOW, id: hsh1.object_id},
+      {message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id}] # next_i => 1
+
+    # i > 0
+    subject["new-songs", 1].must_equal [{message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id}] # next_i => 1
 
     # subscriber has to remember next index. or:
     #subject["new-songs", subscriber] # Broadcast remembers last i.
 
-    # Stream[Notification{stream}, Notification{stream}] => to be displayed
-    # Stream#count
     # Notification#read!
 
     # Stream is "notifications" table or a Redis array per subscriber.
-    NotificationPipeline::Stream.new("new-songs" => subject["new-songs", 0])
+    stream = NotificationPipeline::Stream.new("new-songs" => subject["new-songs", 0])
+
+    # #count is unread notifications
+    stream.count.must_equal 2
+
+    stream.to_a.must_equal [
+      Notification.new({message: "Drones", created_at: Now::NOW, id: hsh1.object_id}),
+      Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id}),
+    ]
+
+    # Subscriber has a stream, channels: last_i
   end
 end

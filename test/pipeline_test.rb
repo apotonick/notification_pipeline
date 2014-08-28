@@ -9,7 +9,7 @@ module NotificationPipeline
 
     def [](name, i=nil)
       return channel(name) unless i
-      channel(name).slice(i..-1)
+      channel(name)[i]
     end
 
     def channel(name)
@@ -22,10 +22,21 @@ module NotificationPipeline
       persist!(hash)
     end
 
+    def [](i)
+      read(i)
+    end
+
   private
     def persist!(hash)
       # persist Notification, e.g. into Redis or AR. Or array.
       push(hash)
+    end
+
+    # this is where we could also read from DB or Redis.
+    def read(i)
+      slice(i..-1)
+      # Redis slice
+      # where channel_id=1 and index>=2
     end
   end
 

@@ -54,13 +54,28 @@ module NotificationPipeline
   end
 
 
-  # Stream is a list of notifications for a subscriber, ready for presentation.
+  # Stream is a list of notifications for a subscriber. This is a presentation object.
+  # It provides the highest abstraction possible and should be the only notification component
+  # used in your rendering/mark-read code.
   class Stream < Array
     def initialize(channels)
       # this can be optimized!
       channels.each do |name, messages|
-        messages.each { |msg| self << Notification.new(msg) }
+        messages.each { |msg| self << Notification.new(msg.merge(read: false)) } # Notification can be persistent. it is only created when stream is requested!
       end
+
+      @read_count = 0
+    end
+
+    def unread_count
+      count - @read_count
+    end
+
+    def read!(id)
+      return false unless notification = find { |ntf| ntf.id == id }
+
+      @read_count += 1
+      notification.read = true
     end
   end
 end
@@ -106,11 +121,21 @@ class PipelineTest < MiniTest::Spec
 
     # #count is unread notifications
     stream.count.must_equal 2
+    stream.unread_count.must_equal 2
 
     stream.to_a.must_equal [
-      Notification.new({message: "Drones", created_at: Now::NOW, id: hsh1.object_id}),
-      Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id}),
+      notif1 = Notification.new({message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false}),
+      Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false}),
     ]
+
+    # #read! non-existent
+    stream.read!(0).must_equal false
+
+    stream.read!(notif1.id).must_equal true
+    stream.count.must_equal 2
+    stream.unread_count.must_equal 1
+
+
 
     # Subscriber has a stream, channels: last_i
   end

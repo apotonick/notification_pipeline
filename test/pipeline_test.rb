@@ -16,6 +16,7 @@ module NotificationPipeline
       channel(name) << message
     end
 
+  private
     def channel(name)
       @channels[name] ||= Channel.new
     end
@@ -113,7 +114,7 @@ class PipelineTest < MiniTest::Spec
 
   # push and read.
   it do
-    subject.channel("new-songs").extend(Now)
+    subject.send(:channel, "new-songs").extend(Now)
 
 
     subject["new-songs"]= hsh1 = {message: "Drones"}

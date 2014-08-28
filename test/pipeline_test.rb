@@ -8,9 +8,12 @@ module NotificationPipeline
       @channels = {}
     end
 
-    def [](name, i=nil)
-      return channel(name) unless i
+    def [](name, i=0) # {new-songs: 1, new-albums: 3, pm-1: 0}
       channel(name)[i]
+    end
+
+    def []=(name, message)
+      channel(name) << message
     end
 
     def channel(name)
@@ -104,15 +107,19 @@ class PipelineTest < MiniTest::Spec
 
   subject { NotificationPipeline::Broadcast.new }
 
+
   # non-existent channel.
   it { subject["non-existent", 0].must_equal [] }
 
   # push and read.
   it do
-    subject["new-songs"].extend(Now)
+    subject.channel("new-songs").extend(Now)
 
-    subject["new-songs"] << hsh1 = {message: "Drones"}
-    subject["new-songs"] << hsh2 = {message: "Them And Us"}
+
+    subject["new-songs"]= hsh1 = {message: "Drones"}
+    subject["new-songs"]= hsh2 = {message: "Them And Us"}
+
+    subject["new-bands"]= hsh3 = {message: "Vention Dention"}
 
     # i = 0
     subject["new-songs", 0].must_equal [
@@ -121,6 +128,11 @@ class PipelineTest < MiniTest::Spec
 
     # i > 0
     subject["new-songs", 1].must_equal [{message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id}] # next_i => 1
+
+    # Subscriber[1]{new-songs: 1, new-albums: 3, pm-1: 0}
+
+    # Broadcast[new-songs: 1, new-albums: 3, pm-1: 0]
+
 
     # subscriber has to remember next index. or:
     #subject["new-songs", subscriber] # Broadcast remembers last i.
@@ -146,6 +158,7 @@ class PipelineTest < MiniTest::Spec
     stream.read!(notif1.id).must_equal true
     stream.count.must_equal 2
     stream.unread_count.must_equal 1
+
     # call it again, accidentially
     stream.read!(notif1.id).must_equal false
     stream.count.must_equal 2

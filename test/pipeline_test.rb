@@ -58,7 +58,7 @@ module NotificationPipeline
   # It provides the highest abstraction possible and should be the only notification component
   # used in your rendering/mark-read code.
   class Stream < Array
-    def initialize(channels)
+    def initialize(persisted, channels)
       # this can be optimized!
       channels.each do |name, messages|
         messages.each { |msg| self << Notification.new(msg.merge(read: false)) } # Notification can be persistent. it is only created when stream is requested!
@@ -73,6 +73,7 @@ module NotificationPipeline
 
     def read!(id)
       return false unless notification = find { |ntf| ntf.id == id }
+      return false if notification.read
 
       @read_count += 1
       notification.read = true
@@ -117,7 +118,7 @@ class PipelineTest < MiniTest::Spec
     # Notification#read!
 
     # Stream is "notifications" table or a Redis array per subscriber.
-    stream = NotificationPipeline::Stream.new("new-songs" => subject["new-songs", 0])
+    stream = NotificationPipeline::Stream.new([], "new-songs" => subject["new-songs", 0])
 
     # #count is unread notifications
     stream.count.must_equal 2
@@ -131,7 +132,12 @@ class PipelineTest < MiniTest::Spec
     # #read! non-existent
     stream.read!(0).must_equal false
 
+    # #read! exists
     stream.read!(notif1.id).must_equal true
+    stream.count.must_equal 2
+    stream.unread_count.must_equal 1
+    # call it again, accidentially
+    stream.read!(notif1.id).must_equal false
     stream.count.must_equal 2
     stream.unread_count.must_equal 1
 

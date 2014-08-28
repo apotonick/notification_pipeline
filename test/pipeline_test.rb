@@ -58,10 +58,13 @@ module NotificationPipeline
   # It provides the highest abstraction possible and should be the only notification component
   # used in your rendering/mark-read code.
   class Stream < Array
-    def initialize(persisted, channels)
+    def initialize(id, persisted, channels)
+      @id = id # this could be the user id, as a stream is per subscriber.
+
       # this can be optimized!
+      # transform new messages to notifications.
       channels.each do |name, messages|
-        messages.each { |msg| self << Notification.new(msg.merge(read: false)) } # Notification can be persistent. it is only created when stream is requested!
+        messages.each { |msg| self << persist!(msg.merge(read: false, stream_id: id)) } # Notification can be persistent. it is only created when stream is requested!
       end
 
       @read_count = 0
@@ -77,6 +80,13 @@ module NotificationPipeline
 
       @read_count += 1
       notification.read = true
+    end
+
+  private
+    attr_reader :id
+
+    def persist!(hash)
+      Notification.new(hash)
     end
   end
 end
@@ -118,15 +128,15 @@ class PipelineTest < MiniTest::Spec
     # Notification#read!
 
     # Stream is "notifications" table or a Redis array per subscriber.
-    stream = NotificationPipeline::Stream.new([], "new-songs" => subject["new-songs", 0])
+    stream = NotificationPipeline::Stream.new(1, [], "new-songs" => subject["new-songs", 0])
 
     # #count is unread notifications
     stream.count.must_equal 2
     stream.unread_count.must_equal 2
 
     stream.to_a.must_equal [
-      notif1 = Notification.new({message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false}),
-      Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false}),
+      notif1 = Notification.new({message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false, stream_id: 1}),
+      notif2 = Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false, stream_id: 1}),
     ]
 
     # #read! non-existent
@@ -142,6 +152,7 @@ class PipelineTest < MiniTest::Spec
     stream.unread_count.must_equal 1
 
 
+    # Stream.from(User.notifications, Broadcast...)
 
     # Subscriber has a stream, channels: last_i
   end

@@ -12,3 +12,4 @@ MiniTest::Spec.class_eval do
     super
   end
 end
+

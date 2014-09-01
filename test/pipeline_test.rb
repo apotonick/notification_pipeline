@@ -35,9 +35,8 @@ class PipelineTest < MiniTest::Spec
     broadcast["new-bands"]= hsh3 = {message: "Vention Dention"}
 
 
-    stream = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, subscriber)
-
-
+    snapshot = {"new-songs" => 1, "new-bands" => 0} # from Subscriber.
+    stream = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, snapshot)
   end
 
 
@@ -81,7 +80,7 @@ class PipelineTest < MiniTest::Spec
 
     # Stream is "notifications" table or a Redis array per subscriber.
     # Stream::Redis.build(store, 1, broadcast)
-    stream = NotificationPipeline::Stream.new(1, [], "new-songs" => broadcast["new-songs" => 0])
+    stream = NotificationPipeline::Stream.new(1, [], broadcast["new-songs" => 0])
 
     # #count is unread notifications
     stream.count.must_equal 2

@@ -7,12 +7,12 @@ module NotificationPipeline
   # It provides the highest abstraction possible and should be the only notification component
   # used in your rendering/mark-read code.
   class Stream < Array
-    def initialize(id, persisted, messages)
+    def initialize(id, persisted, new_messages)
       @id = id # this could be the user id, as a stream is per subscriber.
 
       # this can be optimized!
       # transform new messages to notifications.
-      messages.each do |msg|
+      new_messages.each do |msg|
         self << persist!(msg.merge(read: false, stream_id: id)) # Notification can be persistent. it is only created when stream is requested!
       end
 
@@ -50,13 +50,13 @@ module NotificationPipeline
       end
 
       def initialize(store, *args)
-        super(*args)
         @store = store
+        super(*args)
       end
 
-      # def persist!(msg)
-      #   Redis.new
-      # end
+      def persist!(msg)
+        @store.lpush("stream:#{id}", Marshal.dump(msg))
+      end
     end
   end
 end

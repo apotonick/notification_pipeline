@@ -18,26 +18,34 @@ class PipelineTest < MiniTest::Spec
 
   let(:broadcast) { NotificationPipeline::Broadcast.new }
 
-  let (:store) { Redis.new }
+
 
   # non-existent channel.
   it { broadcast["non-existent" => 0].must_equal [] }
 
 
+  describe "Redis" do
+    let (:store) { Redis.new }
+    before { store.del("stream:1") }
 
-  # redis
-  it do
-    broadcast.send(:channel, "new-songs").extend(Now)
-
-
-    broadcast["new-songs"]= hsh1 = {message: "Drones"}
-    broadcast["new-songs"]= hsh2 = {message: "Them And Us"}
-    broadcast["new-bands"]= hsh3 = {message: "Vention Dention"}
+    # redis
+    it do
+      broadcast.send(:channel, "new-songs").extend(Now)
 
 
-    snapshot = {"new-songs" => 1, "new-bands" => 0} # from Subscriber.
-    stream = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, snapshot)
+      broadcast["new-songs"]= hsh1 = {message: "Drones"}
+      broadcast["new-songs"]= hsh2 = {message: "Them And Us"}
+      broadcast["new-bands"]= hsh3 = {message: "Vention Dention"}
+
+
+      snapshot = {"new-songs" => 1, "new-bands" => 0} # from Subscriber.
+      stream = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, snapshot)
+
+      store.llen("stream:1").must_equal 2
+      store.lrange("stream:1", 0, -1).must_equal ""
+    end
   end
+
 
 
 

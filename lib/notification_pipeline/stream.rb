@@ -12,6 +12,8 @@ module NotificationPipeline
 
       # this can be optimized!
       # transform new messages to notifications.
+      push(*persisted)
+
       new_messages.each do |msg|
         self << persist!(msg.merge(read: false, stream_id: id)) # Notification can be persistent. it is only created when stream is requested!
       end
@@ -44,7 +46,7 @@ module NotificationPipeline
     class Redis < self
       def self.build(store, id, broadcast, snapshot)
         # "new-songs" => subject["new-songs", 0]
-        persisted = store.lrange("stream:#{id}", 0, -1) # serialised, persisted Notifications.
+        persisted = retrieve!(store, id) # serialised, persisted Notifications.
         news      = broadcast[snapshot] # generic.
 
         # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
@@ -58,9 +60,17 @@ module NotificationPipeline
         super(*args)
       end
 
-      def persist!(msg)
+    private
+      def self.retrieve!(store, id)
+        persisted = store.lrange("stream:#{id}", 0, -1)
+        persisted.collect { |ser| Marshal.load(ser) } # FIXME: incredible slow.
+      end
+
+      def persist!(msg) # TODO: they are no Notifications !
         @store.lpush("stream:#{id}", Marshal.dump(msg))
       end
+
+
     end
   end
 end

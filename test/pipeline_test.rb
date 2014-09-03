@@ -40,6 +40,7 @@ class PipelineTest < MiniTest::Spec
 
       snapshot = {"new-songs" => 1, "new-bands" => 0} # from Subscriber.
       stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, snapshot)
+      stream.size.must_equal 2
 
       new_snapshot.must_equal("new-songs" => 2, "new-bands" => 1) # this is for the next lookup.
       store.llen("stream:1").must_equal 2 # since we retrieved 2 items, they get persisted.
@@ -49,6 +50,7 @@ class PipelineTest < MiniTest::Spec
       stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
       new_snapshot.must_equal("new-songs" => 2, "new-bands" => 1)
       store.llen("stream:1").must_equal 2
+      stream.size.must_equal 2
 
 
       # one more message.
@@ -57,6 +59,7 @@ class PipelineTest < MiniTest::Spec
       stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
       new_snapshot.must_equal("new-songs" => 2, "new-bands" => 2)
       store.llen("stream:1").must_equal 3
+      stream.size.must_equal 3
     end
   end
 

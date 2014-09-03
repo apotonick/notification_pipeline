@@ -46,7 +46,11 @@ module NotificationPipeline
         # "new-songs" => subject["new-songs", 0]
         persisted = store.lrange("stream:#{id}", 0, -1) # serialised, persisted Notifications.
         news      = broadcast[snapshot] # generic.
-        new(store, id, persisted, news)
+
+        # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
+        # raise news.to_hash.inspect
+
+        [new(store, id, persisted, news), news.to_hash]
       end
 
       def initialize(store, *args)

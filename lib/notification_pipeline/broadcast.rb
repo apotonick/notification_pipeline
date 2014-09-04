@@ -13,7 +13,7 @@ module NotificationPipeline
       snapshot = {}
 
       Messages.new hash.collect { |name, i|
-        res = channel(name)[i] # [[..], 2]
+        res = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
         snapshot[name] = res.last
         res.first
       }.flatten, snapshot # TODO: optimise as this is the bottleneck.
@@ -26,10 +26,10 @@ module NotificationPipeline
 
   private
     def channel(name)
-      @channels[name] ||= build_channel
+      @channels[name] ||= build_channel(name)
     end
 
-    def build_channel
+    def build_channel(name)
       # this is where we can find/create channel?
       # to add, we don't need to find the channel, though.
       Channel.new
@@ -50,18 +50,22 @@ module NotificationPipeline
   end
 
   # A Channel is a list of messages, usually "notifications" for a particular group, thread or object.
-  # Each message represents an event subscribers want to know about, like "Garrett liked photo XyZ!".
+  # Each message represents what an event subscribers want to know about, like "Garrett liked photo XyZ!".
   class Channel < Array
     def <<(hash)
-      persist!(hash)
+      persist(hash)
     end
 
     def [](i)
-      [read(i), size]
+      [read(i), last_index]
     end
 
   private
-    def persist!(hash)
+    def last_index
+      size
+    end
+
+    def persist(hash)
       # persist Notification, e.g. into Redis or AR. Or array.
 
       # this must be implemented by bg engine.

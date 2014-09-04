@@ -16,5 +16,11 @@ broadcast["new-songs"]= {message: "Drones"}
 subscriber{id: 1, snapshot: {..}}
 
 # retrieving stream for particular subscriber
-stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
 stream = NotificationPipeline::Stream::Redis.build(store, subscriber, broadcast)
+  # will also update subscribers snapshot.
+
+
+  Architecture
+
+  Broadcast Channel Subscriber Stream
+  Per Channel persistence, e.g. Redis for high-frequency channels

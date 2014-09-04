@@ -27,6 +27,8 @@ class PipelineTest < MiniTest::Spec
     let (:store) { Redis.new }
     before { store.del("stream:1") }
 
+    let (:subscriber) { NotificationPipeline::Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
+
     # redis
     it("redis") do
       broadcast.send(:channel, "new-songs").extend(Now)
@@ -37,18 +39,17 @@ class PipelineTest < MiniTest::Spec
       broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
 
 
-      snapshot = {"new-songs" => 1, "new-bands" => 0} # from Subscriber.
-      stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, snapshot)
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
       stream.size.must_equal 2
 
-      new_snapshot.must_equal("new-songs" => 2, "new-bands" => 1) # this is for the next lookup.
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 1) # this is for the next lookup.
       store.llen("stream:1").must_equal 2 # since we retrieved 2 items, they get persisted.
       # store.lrange("stream:1", 0, -1).collect { |ser| Marshal.load(ser) }.must_equal ""
 
       # refresh stream without any new messages.
       puts "next build"
-      stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
-      new_snapshot.must_equal("new-songs" => 2, "new-bands" => 1)
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 1)
       store.llen("stream:1").must_equal 2
       stream.size.must_equal 2
 
@@ -56,8 +57,8 @@ class PipelineTest < MiniTest::Spec
       # one more message.
       broadcast["new-bands"]= hsh3 = {message: "Yngwie Malmsteen"} # eat this
 
-      stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
-      new_snapshot.must_equal("new-songs" => 2, "new-bands" => 2)
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 2)
       store.llen("stream:1").must_equal 3
       stream.size.must_equal 3
 

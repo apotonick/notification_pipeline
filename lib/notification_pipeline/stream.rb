@@ -46,18 +46,18 @@ module NotificationPipeline
 
     require 'redis'
     class Redis < self
-      def self.build(store, id, broadcast, snapshot)
+      def self.build(store, broadcast, subscriber)
         # "new-songs" => subject["new-songs", 0]
-        persisted = retrieve!(store, id) # serialised, persisted Notifications.
+        persisted = retrieve!(store, subscriber.id) # serialised, persisted Notifications.
 
         # here, we can check if any channel has changed and decide whether this stream needs to get updated or not.
-        news      = broadcast[snapshot] # generic.
+        news      = broadcast[subscriber.snapshot] # generic.
+        subscriber.snapshot = news.to_hash # DISCUSS: should that happen in Broadcast?
 
 
         # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
-        # raise news.to_hash.inspect
 
-        [new(store, id, persisted, news), news.to_hash]
+        new(store, subscriber.id, persisted, news)
       end
 
       def initialize(store, *args)

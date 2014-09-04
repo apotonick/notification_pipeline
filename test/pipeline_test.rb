@@ -1,6 +1,5 @@
 require 'test_helper'
 
-require 'ostruct'
 module NotificationPipeline
 
 end
@@ -29,7 +28,7 @@ class PipelineTest < MiniTest::Spec
     before { store.del("stream:1") }
 
     # redis
-    it do
+    it("redis") do
       broadcast.send(:channel, "new-songs").extend(Now)
 
 
@@ -47,6 +46,7 @@ class PipelineTest < MiniTest::Spec
       # store.lrange("stream:1", 0, -1).collect { |ser| Marshal.load(ser) }.must_equal ""
 
       # refresh stream without any new messages.
+      puts "next build"
       stream, new_snapshot = NotificationPipeline::Stream::Redis.build(store, 1, broadcast, new_snapshot)
       new_snapshot.must_equal("new-songs" => 2, "new-bands" => 1)
       store.llen("stream:1").must_equal 2
@@ -60,6 +60,15 @@ class PipelineTest < MiniTest::Spec
       new_snapshot.must_equal("new-songs" => 2, "new-bands" => 2)
       store.llen("stream:1").must_equal 3
       stream.size.must_equal 3
+
+      # stream API returns hash.
+      # #[]
+      stream[0][:message].must_equal "Them And Us"
+      stream[1][:message].must_equal "Vention Dention"
+      stream[2][:message].must_equal "Yngwie Malmsteen"
+
+      # #each
+      stream.each.to_a.map{ |el| el[:message] }.must_equal ["Them And Us", "Vention Dention", "Yngwie Malmsteen"]
     end
   end
 
@@ -112,20 +121,20 @@ class PipelineTest < MiniTest::Spec
     stream.unread_count.must_equal 2
 
     stream.to_a.must_equal [
-      notif1 = Notification.new({message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false, stream_id: 1}),
-      notif2 = Notification.new({message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false, stream_id: 1}),
+      notif1 = {message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false, stream_id: 1},
+      notif2 = {message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false, stream_id: 1},
     ]
 
     # #read! non-existent
     stream.read!(0).must_equal false
 
     # #read! exists
-    stream.read!(notif1.id).must_equal true
+    stream.read!(notif1[:id]).must_equal true
     stream.count.must_equal 2
     stream.unread_count.must_equal 1
 
     # call it again, accidentially
-    stream.read!(notif1.id).must_equal false
+    stream.read!(notif1[:id]).must_equal false
     stream.count.must_equal 2
     stream.unread_count.must_equal 1
 

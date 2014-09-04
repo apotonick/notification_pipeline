@@ -1,5 +1,6 @@
 module NotificationPipeline
- class Notification < OpenStruct
+  require 'ostruct'
+  class Notification < OpenStruct
   end
 
 
@@ -26,11 +27,11 @@ module NotificationPipeline
     end
 
     def read!(id)
-      return false unless notification = find { |ntf| ntf.id == id }
-      return false if notification.read
+      return false unless notification = find { |ntf| ntf[:id] == id }
+      return false if notification[:read]
 
       @read_count += 1
-      notification.read = true
+      notification[:read] = true
     end
 
   private
@@ -38,7 +39,8 @@ module NotificationPipeline
 
     def persist!(msg)
       # redis[stream][id] <<
-      Notification.new(msg)
+      # Notification.new(msg)
+      msg
     end
 
 
@@ -47,7 +49,10 @@ module NotificationPipeline
       def self.build(store, id, broadcast, snapshot)
         # "new-songs" => subject["new-songs", 0]
         persisted = retrieve!(store, id) # serialised, persisted Notifications.
+
+        # here, we can check if any channel has changed and decide whether this stream needs to get updated or not.
         news      = broadcast[snapshot] # generic.
+
 
         # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
         # raise news.to_hash.inspect
@@ -57,6 +62,7 @@ module NotificationPipeline
 
       def initialize(store, *args)
         @store = store
+
         super(*args)
       end
 
@@ -66,8 +72,10 @@ module NotificationPipeline
         persisted.collect { |ser| Marshal.load(ser) } # FIXME: incredible slow.
       end
 
+      # called from #initialize
       def persist!(msg) # TODO: they are no Notifications !
-        @store.lpush("stream:#{id}", Marshal.dump(msg))
+        @store.rpush("stream:#{id}", Marshal.dump(msg))
+        msg
       end
 
 

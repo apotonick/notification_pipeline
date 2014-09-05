@@ -4,10 +4,11 @@ module NotificationPipeline
       @name = name
     end
 
-    def [](i)
-      messages = read(i) # extreme costly.
-      [messages.collect{ |msg| msg.attributes }, messages.last.index+1]
-    end
+    # def [](i)
+    #   # unused ATM as we do grouped query in B::AR.
+    #   messages = read(i) # extreme costly.
+    #   [messages.collect{ |msg| msg.attributes }, messages.last.index+1]
+    # end
 
   private
     def persist(message)
@@ -22,7 +23,7 @@ module NotificationPipeline
   # all requested channels.
   module Broadcast::ActiveRecord
     def build_channel(name)
-      NotificationPipeline::Channel::ActiveRecord.new(name)
+      NotificationPipeline::Channel::ActiveRecord.new(name) # this is needed for write, only!
     end
 
     def retrieve(hash, snapshot) # we don't need to pass in channel names that haven't changed!

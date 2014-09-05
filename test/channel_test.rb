@@ -25,8 +25,6 @@ class NotificationPipeline::Channel::ActiveRecord < NotificationPipeline::Channe
 
   def [](i)
     messages = read(i)
-    puts "#{i}"
-    puts messages.inspect
     [messages.collect{ |msg| msg.attributes }, messages.last.index+1]
   end
 
@@ -38,7 +36,7 @@ private
   end
 
   def read(i)
-    ChannelMessage.where(name: @name).where("'index' >= ?", i).order("'index' ASC")
+    ChannelMessage.where(name: @name).where('"index" >= ?', i).order("'index' ASC")
   end
 end
 
@@ -68,14 +66,15 @@ class ChannelWithActiveRecordTest < MiniTest::Spec
     broadcast["new-songs"] = {content: "Déjà Vu"}
     broadcast["new-artists"] = {content: "Van Halen"}
     ChannelMessage.count.must_equal 3
-    puts "oi"
-    puts ChannelMessage.where(name: "new-songs").where("'index' >= 1").to_sql.inspect
+
 
     broadcast = Broadcast.new
 
     messages = broadcast["new-songs" => 1]
     messages.size.must_equal 1
-    messages[1]["message"].must_equal({"content"=>"Déjà Vu"})
+    puts messages.inspect
+
+    messages[0]["message"].must_equal({"content"=>"Déjà Vu"})
     messages.to_hash.must_equal("new-songs" => 2)
 
     messages = broadcast["new-songs" => 0]

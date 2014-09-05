@@ -1,9 +1,5 @@
 require 'test_helper'
 
-module NotificationPipeline
-
-end
-
 class PipelineTest < MiniTest::Spec
   Notification = NotificationPipeline::Notification
 
@@ -38,7 +34,86 @@ class PipelineTest < MiniTest::Spec
       broadcast["new-songs"]= hsh2 = {message: "Them And Us"} # eat this
       broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
 
+      # user, no channels
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, NotificationPipeline::Subscriber.new(2, {}))
+      stream.size.must_equal 0
 
+
+      # user with channels
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+      stream.size.must_equal 2
+
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 1) # this is for the next lookup.
+      store.llen("stream:1").must_equal 2 # since we retrieved 2 items, they get persisted.
+      # store.lrange("stream:1", 0, -1).collect { |ser| Marshal.load(ser) }.must_equal ""
+
+      # refresh stream without any new messages.
+      puts "next build"
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 1)
+      store.llen("stream:1").must_equal 2
+      stream.size.must_equal 2
+
+
+      # one more message.
+      broadcast["new-bands"]= hsh3 = {message: "Yngwie Malmsteen"} # eat this
+
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+      subscriber.snapshot.must_equal("new-songs" => 2, "new-bands" => 2)
+      store.llen("stream:1").must_equal 3
+      stream.size.must_equal 3
+
+      # stream API returns hash.
+      # #[]
+      stream[0][:message].must_equal "Them And Us"
+      stream[1][:message].must_equal "Vention Dention"
+      stream[2][:message].must_equal "Yngwie Malmsteen"
+
+      # #each
+      stream.each.to_a.map{ |el| el[:message] }.must_equal ["Them And Us", "Vention Dention", "Yngwie Malmsteen"]
+    end
+
+    # #flush!
+    it do
+      broadcast.send(:channel, "new-songs").extend(Now)
+
+      broadcast["new-songs"]= hsh1 = {message: "Drones"}
+      broadcast["new-songs"]= hsh2 = {message: "Them And Us"} # eat this
+      broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
+
+      # user with channels
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
+
+
+      store.llen("stream:1").must_equal 2 # since we retrieved 2 items, they get persisted.
+      stream.extend(NotificationPipeline::Stream::Redis::Flush).flush!
+      store.llen("stream:1").must_equal 0
+    end
+  end
+
+
+  describe "Redis+MySQL BC" do
+    let (:broadcast) { NotificationPipeline::Broadcast.new.extend(NotificationPipeline::Broadcast::ActiveRecord) }
+    let (:store) { Redis.new }
+    before { store.del("stream:1") }
+
+    let (:subscriber) { NotificationPipeline::Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
+
+    # redis
+    it("redis") do
+      broadcast.send(:channel, "new-songs").extend(Now)
+
+
+      broadcast["new-songs"]= hsh1 = {message: "Drones"}
+      broadcast["new-songs"]= hsh2 = {message: "Them And Us"} # eat this
+      broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
+
+      # user, no channels
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, NotificationPipeline::Subscriber.new(2, {}))
+      stream.size.must_equal 0
+
+
+      # user with channels
       stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
       stream.size.must_equal 2
 
@@ -72,8 +147,6 @@ class PipelineTest < MiniTest::Spec
       stream.each.to_a.map{ |el| el[:message] }.must_equal ["Them And Us", "Vention Dention", "Yngwie Malmsteen"]
     end
   end
-
-
 
 
   # push and read.

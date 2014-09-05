@@ -13,6 +13,7 @@ ActiveRecord::Base.establish_connection(
 #     table.timestamps
 #   end
 # end
+# add_index :channel_messages, [:name, :index]
 
 class ChannelMessage < ActiveRecord::Base
   serialize :message, JSON

@@ -13,11 +13,7 @@ module NotificationPipeline
       # here, we could keep last_i for every channel so we don't need to do channel[i], which is costly.
       snapshot = {}
 
-      Messages.new hash.collect { |name, i|
-        res, last_i = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
-        snapshot[name] = last_i
-        res
-      }.flatten, snapshot # TODO: optimise as this is the bottleneck.
+      Messages.new *retrieve(hash, snapshot)
     end
 
     def []=(name, message)
@@ -26,6 +22,16 @@ module NotificationPipeline
     end
 
   private
+    # retrieve new messages for all channels and update snapshot.
+    def retrieve(hash, snapshot)
+      messages = hash.collect { |name, i|
+         res, last_i = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
+         snapshot[name] = last_i
+         res
+       }.flatten
+      [messages, snapshot] # TODO: optimise as this is the bottleneck.
+    end
+
     def channel(name)
       @channels[name] ||= build_channel(name)
     end

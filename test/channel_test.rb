@@ -38,18 +38,23 @@ class ChannelWithActiveRecordTest < MiniTest::Spec
 
     broadcast["new-songs"] = {content: "Doin' Time"}
     broadcast["new-songs"] = {content: "Déjà Vu"}
-    broadcast["new-artists"] = {content: "Van Halen"}
-    ChannelMessage.count.must_equal 3
+    broadcast["new-artists"] = {content: "Van Halen"} # 0
+    broadcast["new-artists"] = {content: "Helloween"} # 1
+    broadcast["new-artists"] = {content: "Rainbow"}   # 2
+    ChannelMessage.count.must_equal 5
 
 
     broadcast = Broadcast.new
 
-    messages = broadcast["new-songs" => 1]
-    messages.size.must_equal 1
-    puts messages.inspect
+    messages = broadcast["new-songs" => 1, "new-artists" => 0]
+    messages.size.must_equal 4
+    # puts messages.inspect
 
-    messages[0]["message"].must_equal({"content"=>"Déjà Vu"})
-    messages.to_hash.must_equal("new-songs" => 2)
+    messages[0]["message"].must_equal({"content"=>"Van Halen"})
+    messages[1]["message"].must_equal({"content"=>"Helloween"})
+    messages[2]["message"].must_equal({"content"=>"Rainbow"})
+    messages[3]["message"].must_equal({"content"=>"Déjà Vu"})
+    messages.to_hash.must_equal("new-songs" => 2, "new-artists" => 3)
 
     messages = broadcast["new-songs" => 0]
     messages.size.must_equal 2

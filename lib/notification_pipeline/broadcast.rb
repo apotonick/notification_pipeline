@@ -14,9 +14,9 @@ module NotificationPipeline
       snapshot = {}
 
       Messages.new hash.collect { |name, i|
-        res = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
-        snapshot[name] = res.last
-        res.first
+        res, last_i = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
+        snapshot[name] = last_i
+        res
       }.flatten, snapshot # TODO: optimise as this is the bottleneck.
     end
 

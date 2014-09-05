@@ -18,33 +18,7 @@ class ChannelMessage < ActiveRecord::Base
   serialize :message, JSON
 end
 
-class NotificationPipeline::Channel::ActiveRecord < NotificationPipeline::Channel
-  def initialize(name)
-    @name = name
-  end
-
-  def [](i)
-    messages = read(i)
-    [messages.collect{ |msg| msg.attributes }, messages.last.index+1]
-  end
-
-private
-  def persist(message)
-    # TODO: wrap with transaction
-    i = ChannelMessage.where(name: @name).count
-    ChannelMessage.create(name: @name, message: message, index: i)
-  end
-
-  def read(i)
-    ChannelMessage.where(name: @name).where('"index" >= ?', i).order("'index' ASC")
-  end
-end
-
-module NotificationPipeline::Broadcast::ActiveRecord
-  def build_channel(name)
-    NotificationPipeline::Channel::ActiveRecord.new(name)
-  end
-end
+require 'notification_pipeline/active_record'
 
 class ChannelWithActiveRecordTest < MiniTest::Spec
   after do
@@ -82,5 +56,9 @@ class ChannelWithActiveRecordTest < MiniTest::Spec
     messages[0]["message"].must_equal({"content"=>"Doin' Time"})
     messages[1]["message"].must_equal({"content"=>"Déjà Vu"})
     messages.to_hash.must_equal("new-songs" => 2)
+
+    # retrieve non-existent messages
+    messages = broadcast["new-songs" => 2]
+    messages.size.must_equal 0
   end
 end

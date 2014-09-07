@@ -31,8 +31,10 @@ module NotificationPipeline
       return [[], snapshot] if snapshot.size == 0 # empty snapshot shouldn't return any messages.
 
       ors = snapshot.collect do |name, last_i|
-        "(name=\"#{name}\" AND \"index\" >= #{last_i})"
+        "(name=\"#{name}\" AND `index` >= #{last_i})"
       end
+
+      puts "=================> #{ors.inspect}"
 
       # SELECT "channel_messages".* FROM "channel_messages"  WHERE ((name="new-songs" AND "index" >= 1) OR (name="new-artists" AND "index" >= 1))
       messages = ChannelMessage.where(ors.join(" OR ")).order('name, "index" ASC')

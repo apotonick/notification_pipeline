@@ -26,13 +26,17 @@ module NotificationPipeline
       NotificationPipeline::Channel::ActiveRecord.new(name) # this is needed for write, only!
     end
 
-    def retrieve(hash, snapshot) # we don't need to pass in channel names that haven't changed!
-      ors = hash.collect do |name, last_i|
+    # hash = snapshot, snapshot = new snapshot.
+    def retrieve(snapshot) # we don't need to pass in channel names that haven't changed!
+      return [[], snapshot] if snapshot.size == 0 # empty snapshot shouldn't return any messages.
+
+      ors = snapshot.collect do |name, last_i|
         "(name=\"#{name}\" AND \"index\" >= #{last_i})"
       end
 
       # SELECT "channel_messages".* FROM "channel_messages"  WHERE ((name="new-songs" AND "index" >= 1) OR (name="new-artists" AND "index" >= 1))
       messages = ChannelMessage.where(ors.join(" OR ")).order('name, "index" ASC')
+      return [[], snapshot] if messages.size == 0 # nothing new.
 
       # this goes through all new messages and computes the new snapshot.
       [messages.collect { |msg| snapshot[msg.name] = msg.index+1; msg.attributes }, snapshot]

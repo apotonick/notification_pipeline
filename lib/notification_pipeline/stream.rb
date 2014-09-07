@@ -51,9 +51,9 @@ module NotificationPipeline
         persisted = retrieve!(store, subscriber.id) # serialised, persisted Notifications.
 
         # here, we can check if any channel has changed and decide whether this stream needs to get updated or not.
-        puts "`````````````````````````````````` snapshot: #{subscriber.snapshot.inspect}"
+         # puts "`````````````````````````````````` snapshot: #{subscriber.snapshot.inspect}"
         news      = broadcast[subscriber.snapshot] # generic.
-        puts "`````````````````````````````````` news:     #{news.to_hash.inspect}"
+         # puts "`````````````````````````````````` news:     #{news.inspect}"
         subscriber.snapshot = news.to_hash # DISCUSS: should that happen in Broadcast?
 
 

@@ -11,9 +11,7 @@ module NotificationPipeline
     # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
     def [](hash) # {new-songs: 1, new-albums: 3, pm-1: 0}
       # here, we could keep last_i for every channel so we don't need to do channel[i], which is costly.
-      snapshot = {}
-
-      Messages.new *retrieve(hash, snapshot)
+      Messages.new *retrieve(hash)
     end
 
     def []=(name, message)
@@ -23,7 +21,9 @@ module NotificationPipeline
 
   private
     # retrieve new messages for all channels and update snapshot.
-    def retrieve(hash, snapshot)
+    def retrieve(hash)
+      snapshot = {}
+
       messages = hash.collect { |name, i|
          res, last_i = channel(name)[i] # [[..], 2] # here, we could only open channels that have changed.
          snapshot[name] = last_i

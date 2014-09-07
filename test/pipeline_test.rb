@@ -2,6 +2,7 @@ require 'test_helper'
 
 class PipelineTest < MiniTest::Spec
   Notification = NotificationPipeline::Notification
+  Subscriber = NotificationPipeline::Subscriber
 
   module Now
     NOW = Time.now
@@ -21,9 +22,31 @@ class PipelineTest < MiniTest::Spec
 
   describe "Redis" do
     let (:store) { Redis.new }
-    before { store.del("stream:1") }
+    before {
+      store.del("stream:1")
+      store.del("stream:2")
+    }
 
-    let (:subscriber) { NotificationPipeline::Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
+    let (:subscriber) { Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
+
+
+    # Broadcast#[]
+    it"xxxx" do
+      broadcast["new-bands"]= {message: "Helloween"}
+      broadcast["new-songs"]= {message: "Drones"}
+
+      # empty snapshot means there shouldn't be any messages.
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, Subscriber.new(2, {}))
+      stream.size.must_equal 0
+
+      # first, sucessfully retrieve.
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, Subscriber.new(2, {"new-songs" => 0}))
+      stream.size.must_equal 1
+
+      # even if snapshot is empty now, we still retrieve the previously persisted message
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, Subscriber.new(2, {}))
+      stream.size.must_equal 1
+    end
 
     # redis
     it("redis") do
@@ -35,7 +58,7 @@ class PipelineTest < MiniTest::Spec
       broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
 
       # user, no channels
-      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, NotificationPipeline::Subscriber.new(2, {}))
+      stream = NotificationPipeline::Stream::Redis.build(store, broadcast, Subscriber.new(2, {}))
       stream.size.must_equal 0
 
 
@@ -95,12 +118,16 @@ class PipelineTest < MiniTest::Spec
   describe "Redis+MySQL BC" do
     let (:broadcast) { NotificationPipeline::Broadcast.new.extend(NotificationPipeline::Broadcast::ActiveRecord) }
     let (:store) { Redis.new }
-    before { store.del("stream:1") }
+    before {
+      store.del("stream:1")
+      store.del("stream:2")
+      ChannelMessage.delete_all
+    }
 
     let (:subscriber) { NotificationPipeline::Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
 
     # redis
-    it("redis") do
+    it("redis xx") do
       broadcast.send(:channel, "new-songs").extend(Now)
 
 
@@ -129,7 +156,7 @@ class PipelineTest < MiniTest::Spec
       stream.size.must_equal 2
 
 
-      # one more message.
+      # one more message, only one channel.
       broadcast["new-bands"]= hsh3 = {message: "Yngwie Malmsteen"} # eat this
 
       stream = NotificationPipeline::Stream::Redis.build(store, broadcast, subscriber)
@@ -139,12 +166,14 @@ class PipelineTest < MiniTest::Spec
 
       # stream API returns hash.
       # #[]
-      stream[0][:message].must_equal "Them And Us"
-      stream[1][:message].must_equal "Vention Dention"
-      stream[2][:message].must_equal "Yngwie Malmsteen"
+      puts "ourtest   "
+      puts stream.inspect
+      stream[0]["message"].must_equal({"message" => "Vention Dention"})
+      stream[1]["message"].must_equal({"message" => "Them And Us"})
+      stream[2]["message"].must_equal({"message" => "Yngwie Malmsteen"})
 
       # #each
-      stream.each.to_a.map{ |el| el[:message] }.must_equal ["Them And Us", "Vention Dention", "Yngwie Malmsteen"]
+      stream.each.to_a.map{ |el| el["message"] }.must_equal [{"message"=>"Vention Dention"}, {"message"=>"Them And Us"}, {"message"=>"Yngwie Malmsteen"}]
     end
   end
 

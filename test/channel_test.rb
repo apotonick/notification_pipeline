@@ -22,7 +22,7 @@ end
 require 'notification_pipeline/active_record'
 
 class ChannelWithActiveRecordTest < MiniTest::Spec
-  after do
+  before do
     ChannelMessage.delete_all
   end
 

@@ -16,7 +16,7 @@ module NotificationPipeline
       push(*persisted)
 
       new_messages.each do |msg|
-        self << persist!(msg.merge(read: false, stream_id: id)) # Notification can be persistent. it is only created when stream is requested!
+        self << persist!(msg.merge("read" => false, "stream_id" => id)) # Notification can be persistent. it is only created when stream is requested!
       end
 
       @read_count = 0

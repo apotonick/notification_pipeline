@@ -172,8 +172,12 @@ class PipelineTest < MiniTest::Spec
       stream[0]["message"].must_equal({"message" => "Vention Dention"})
       stream[0]["created_at"].must_equal vd.created_at
       stream[0]["id"].must_equal vd.id
+      stream[0]["name"].must_equal "new-bands" # channel name
+      stream[0]["stream_id"].must_equal 1
+
 
       stream[1]["message"].must_equal({"message" => "Them And Us"})
+      stream[1]["id"].wont_equal stream[0]["id"]
       stream[2]["message"].must_equal({"message" => "Yngwie Malmsteen"})
 
       # #each
@@ -228,8 +232,8 @@ class PipelineTest < MiniTest::Spec
     stream.unread_count.must_equal 2
 
     stream.to_a.must_equal [
-      notif1 = {message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, read: false, stream_id: 1},
-      notif2 = {message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, read: false, stream_id: 1},
+      notif1 = {message: "Drones",      created_at: Now::NOW, id: hsh1.object_id, "read" => false, "stream_id" => 1},
+      notif2 = {message: "Them And Us", created_at: Now::NOW, id: hsh2.object_id, "read" => false, "stream_id" => 1},
     ]
 
     # #read! non-existent

@@ -48,7 +48,7 @@ module NotificationPipeline
     class Redis < self
       def self.build(store, broadcast, subscriber)
         # "new-songs" => subject["new-songs", 0]
-        persisted = retrieve!(store, subscriber.id) # serialised, persisted Notifications.
+        persisted = retrieve!(store, subscriber.id) # serialised, persisted Notifications. from Redis.
 
         # here, we can check if any channel has changed and decide whether this stream needs to get updated or not.
          # puts "`````````````````````````````````` snapshot: #{subscriber.snapshot.inspect}"

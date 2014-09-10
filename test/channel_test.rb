@@ -43,7 +43,7 @@ class ChannelWithActiveRecordTest < MiniTest::Spec
     broadcast["new-artists"] = {content: "Helloween"} # 1
     broadcast["new-artists"] = {content: "Rainbow"}   # 2
     ChannelMessage.count.must_equal 5
-
+    persisted = ChannelMessage.all.order(:id)
 
     broadcast = Broadcast.new
 
@@ -51,7 +51,8 @@ class ChannelWithActiveRecordTest < MiniTest::Spec
     messages.size.must_equal 4
     # puts messages.inspect
 
-    messages[0]["message"].must_equal({"content"=>"Van Halen"})
+    # message contains created_at and id.
+    messages[0].must_equal("message" => {"content"=>"Van Halen"}, "id" => persisted[2].id, "created_at" => persisted[2].created_at, "name"=> "new-artists", "index"=>0)
     messages[1]["message"].must_equal({"content"=>"Helloween"})
     messages[2]["message"].must_equal({"content"=>"Rainbow"})
     messages[3]["message"].must_equal({"content"=>"Déjà Vu"})

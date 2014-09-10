@@ -127,13 +127,15 @@ class PipelineTest < MiniTest::Spec
     let (:subscriber) { NotificationPipeline::Subscriber.new(1, {"new-songs" => 1, "new-bands" => 0}) }
 
     # redis
-    it("redis xx") do
+    it("redis") do
       broadcast.send(:channel, "new-songs").extend(Now)
 
 
       broadcast["new-songs"]= hsh1 = {message: "Drones"}
       broadcast["new-songs"]= hsh2 = {message: "Them And Us"} # eat this
       broadcast["new-bands"]= hsh3 = {message: "Vention Dention"} # eat this
+
+      vd = ChannelMessage.last
 
       # user, no channels
       stream = NotificationPipeline::Stream::Redis.build(store, broadcast, NotificationPipeline::Subscriber.new(2, {}))
@@ -166,9 +168,11 @@ class PipelineTest < MiniTest::Spec
 
       # stream API returns hash.
       # #[]
-      puts "ourtest   "
-      puts stream.inspect
+      # notification contains message, stream:id and created_at.
       stream[0]["message"].must_equal({"message" => "Vention Dention"})
+      stream[0]["created_at"].must_equal vd.created_at
+      stream[0]["id"].must_equal vd.id
+
       stream[1]["message"].must_equal({"message" => "Them And Us"})
       stream[2]["message"].must_equal({"message" => "Yngwie Malmsteen"})
 

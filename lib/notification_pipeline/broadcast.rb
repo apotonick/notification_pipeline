@@ -9,6 +9,8 @@ module NotificationPipeline
     # Broadcast::[] is the only public reader for messages in a set of channels.
     # Returns Messages. API: Messages#each, Messages#to_hash, which returns the snapshot.
     # TODO: make broadcast[..] return [[Notification, Notification], snapshot]
+    #
+    # A message always has created_at, id, and message (payload).
     def [](hash) # {new-songs: 1, new-albums: 3, pm-1: 0}
       # here, we could keep last_i for every channel so we don't need to do channel[i], which is costly.
       Messages.new *retrieve(hash)

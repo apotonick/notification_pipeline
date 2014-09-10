@@ -34,14 +34,12 @@ module NotificationPipeline
         "(name=\"#{name}\" AND `index` >= #{last_i})"
       end
 
-      puts "=================> #{ors.inspect}"
-
       # SELECT "channel_messages".* FROM "channel_messages"  WHERE ((name="new-songs" AND "index" >= 1) OR (name="new-artists" AND "index" >= 1))
       messages = ChannelMessage.where(ors.join(" OR ")).order('name, "index" ASC')
       return [[], snapshot] if messages.size == 0 # nothing new.
 
       # this goes through all new messages and computes the new snapshot.
-      [messages.collect { |msg| snapshot[msg.name] = msg.index+1; msg.attributes }, snapshot]
+      [messages.collect { |msg| snapshot[msg.name] = msg.index+1; msg.attributes.except("updated_at") }, snapshot]
     end
   end
 end
